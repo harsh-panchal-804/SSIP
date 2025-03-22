@@ -5,6 +5,7 @@ import redis from "redis";
 import connectDB from "./model/connectDB.js";
 import faqRoutes from "./routes/faq.routes.js";
 import cors from "cors";
+
 connectDB();
 
 const app = express();
@@ -23,5 +24,5 @@ app.use("/faqs", faqRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log("Server Listening on Port", PORT)
+    console.log("Server Listening on port: ", PORT)
 })

@@ -28,6 +28,5 @@ faqSchema.methods.translateLang = async function (field, lang, redisClient) {
     catch (err) {
         console.log(err);
     }
-
 }
 export default mongoose.model("faqModel", faqSchema);
