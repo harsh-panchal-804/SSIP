@@ -149,7 +149,7 @@ const NewrefreshToken = asyncHandler(async(req,res)=>{
         if(incomingrefresh !== user?.refreshToken){
           throw new ApiError(409,"Refresh token not found")
         }
-        const{acessToken,newrefreshToken}= await generateAccessAndRefreshToken(user._id)
+        const{acessToken,refreshToken}= await generateAccessAndRefreshToken(user._id)
         const options={
             httpOnly:true,
             secure:true
@@ -157,12 +157,12 @@ const NewrefreshToken = asyncHandler(async(req,res)=>{
         return res
         .status(200)
         .cookie("accessToken",acessToken,options)
-        .cookie("refreshToken",newrefreshToken,options)
+        .cookie("refreshToken",refreshToken,options)
         .json(
             new ApiResponse(
                 200,
                 {
-                acessToken,refreshToken:newrefreshToken
+                acessToken,refreshToken:refreshToken
                 },
                 "User logged in Successfully"
             )
@@ -171,6 +171,23 @@ const NewrefreshToken = asyncHandler(async(req,res)=>{
        throw new ApiError(401,error?.message ||"refresh token not found")
 
     }
+
+    const ChangePassword= asyncHandler(async(res,req)=>{
+      const{oldPassword,newPassword}= req.body
+
+      const user= await User.findById(req.user?._id);
+      const isPasscorrect= await isPasswordCorrect(oldPassword)
+
+      if(!isPasscorrect){
+        throw new ApiError(400,"Invalid password")
+      }
+      user.password= newPassword
+      await user.save({ValidateBeforeSave:false})
+
+      return res.
+      status(200)
+      .json(new ApiResponse(200,{},"Password is changed succesfully"))
+    })
 
 
 })
@@ -181,5 +198,6 @@ const NewrefreshToken = asyncHandler(async(req,res)=>{
         registerUser,
         loginUser,
         logout,
-        NewrefreshToken
+        NewrefreshToken,
+        ChangePassword
     }
