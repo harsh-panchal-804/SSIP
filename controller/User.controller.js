@@ -3,6 +3,7 @@ import {ApiError} from "../utils/ApiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import jwt from "jsonwebtoken"
 
 
 const generateAccessAndRefreshToken= async(userId)=>{
@@ -109,9 +110,76 @@ return res
     )
 )
 })
+const logout= asyncHandler(async(req,res)=>{
+    await User.findByIdAndUpdate(
+        req.User._id={
+            $unset:{
+                refreshToken:1
+            }
+        },{
+            new:true
+        }
+    )
+    const option ={
+        httpOnly:true,
+        secure:true
+    }
+    return res.
+    status(200)
+    .clearCokkie("accessToken",option)
+    .clearCokkie("refreshToken",option)
+    .json(new ApiResponse(200,{},"User logged out"))
+
+})
+const NewrefreshToken = asyncHandler(async(req,res)=>{
+    const incomingrefresh= req.cokkies.refreshToken;
+
+    if(!incomingrefresh){
+        throw new ApiError(400,"refreshToken not found")
+    }
+    try{
+        const decodeToken=jwt.verify(incomingrefresh,
+            process.en.REFRESH_TOKEN
+        )
+        const user= await User.findById(decodeToken?._id);
+
+        if(!user){
+             throw new ApiError(400,"user do not exist")
+        }
+        if(incomingrefresh !== user?.refreshToken){
+          throw new ApiError(409,"Refresh token not found")
+        }
+        const{acessToken,newrefreshToken}= await generateAccessAndRefreshToken(user._id)
+        const options={
+            httpOnly:true,
+            secure:true
+        }
+        return res
+        .status(200)
+        .cookie("accessToken",acessToken,options)
+        .cookie("refreshToken",refreshToken,options)
+        .json(
+            new ApiResponse(
+                200,
+                {
+                acessToken,refreshToken:newrefreshToken
+                },
+                "User logged in Successfully"
+            )
+        )
+    }catch(error){
+       throw new ApiError(401,error?.message ||"refresh token not found")
+
+    }
+
+
+})
+
 
 
     export{
         registerUser,
-        loginUser
+        loginUser,
+        logout,
+        NewrefreshToken
     }
