@@ -1,5 +1,5 @@
 import { Router } from "express";
-import faqModel from "../model/Schema/faq.schema.js";
+import faqModel from "../Backend/model/Schema/faq.schema.js";
 const router=Router();
 router.get("/",async(req,res)=>{
     const lang =req.query.lang;
