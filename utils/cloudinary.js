@@ -26,4 +26,23 @@ try{
           return null;
        };  
 }
-export {uploadOnCloudinary}
+
+const deleteFile = (publicId) => {
+    return new Promise((resolve, reject) => {
+      cloudinary.uploader.destroy(
+        publicId.trim(), // is the public_id field in the resource object
+        { resource_type: 'raw' }, //tell the resource type you wanna delete (image, raw, video)
+        (error, result) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve(result);
+          }
+        }
+      );
+    });
+  };
+ 
+export {uploadOnCloudinary,
+    deleteFile
+}

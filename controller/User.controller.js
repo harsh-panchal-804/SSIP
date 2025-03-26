@@ -2,7 +2,7 @@ import User from "../Backend/model/Schema/user.schema.js";
 import {ApiError} from "../utils/ApiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { deleteFile, uploadOnCloudinary } from "../utils/cloudinary.js";
 import jwt from "jsonwebtoken"
 
 
@@ -171,12 +171,13 @@ const NewrefreshToken = asyncHandler(async(req,res)=>{
        throw new ApiError(401,error?.message ||"refresh token not found")
 
     }
+})
 
     const ChangePassword= asyncHandler(async(res,req)=>{
       const{oldPassword,newPassword}= req.body
 
       const user= await User.findById(req.user?._id);
-      const isPasscorrect= await isPasswordCorrect(oldPassword)
+      const isPasscorrect= await user.isPasswordCorrect(oldPassword)
 
       if(!isPasscorrect){
         throw new ApiError(400,"Invalid password")
@@ -189,15 +190,71 @@ const NewrefreshToken = asyncHandler(async(req,res)=>{
       .json(new ApiResponse(200,{},"Password is changed succesfully"))
     })
 
+    const updateAccountDetails= asyncHandler(async(req,res)=>{
+    const{firstNmae,lastName,email}= req.body;
+    if(!firstNmae|| !lastName || !email){
+        throw new ApiError(400,"All fields are required")
+    }
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set:{
+                firstNmae,
+                lastName,
+                email
+            }
+        },
+        {
+            new:true
+        }
+    ).select("-password")
+     
+    return res.status(200)
+    .json(new ApiResponse(200,user,"Account details updated"))
+    });
 
-})
+    const updatedProfilePhoto= asyncHandler(async(req,res)=>{
+        const profilePictureLocalPath= req.file?.path
 
+        if(!profilePictureLocalPath){
+            throw new ApiError(400,"avatar file missing")
+        }
+        const useer=await User.findById(req.user._ID);
 
+        if(useer?.profilePicture?.public_id){
+            await deleteFile(useer.profilePicture.public_id);
+        }
+        const profilePicture = await uploadOnCloudinary(profilePictureLocalPath)
+        if(!profilePicture){
+            throw new ApiError(400,"Failed to upload new Photo")
+        }
 
+        const user= await User.findByIdAndUpdate(
+            req.user?._id,
+            {
+                $set:{
+                    profilePicture:profilePicture.url
+                }
+            },{
+                new:true
+            }
+        ).select("-password")
+ 
+        return res
+        .status(200)
+        .json(
+            new ApiResponse(200,user,"Profile photo updated")
+        )
+    })
+
+    
+      
     export{
         registerUser,
         loginUser,
         logout,
         NewrefreshToken,
-        ChangePassword
+        ChangePassword,
+        updateAccountDetails,
+        updatedProfilePhoto
     }
