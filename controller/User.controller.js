@@ -2,6 +2,7 @@ import User from "../Backend/model/Schema/user.schema.js";
 import {ApiError} from "../utils/ApiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
+import speakeasy from "speakeasy";
 import { deleteFile, uploadOnCloudinary } from "../utils/cloudinary.js";
 import jwt from "jsonwebtoken"
 
@@ -69,10 +70,10 @@ const registerUser= asyncHandler(async(req,res)=>{
     })
 
     const loginUser= asyncHandler(async(req,res)=>{
-        const{firstName,email,password} = req.body;
+        const{firstName,email,password,role} = req.body;
 
         if(
-            [firstName,email,password].some((filter)=>filter?.trim()=== "") ){
+            [firstName,email,password,role].some((filter)=>filter?.trim()=== "") ){
                 throw new ApiError(400,"FiratNmae,email,Password required") 
             }
 
@@ -172,6 +173,71 @@ const NewrefreshToken = asyncHandler(async(req,res)=>{
 
     }
 })
+const generateOTP = asyncHandler(async(req,res)=>{
+    if(!req.user){
+        throw new ApiError(401,"User not authenticated");
+    }
+    const user = await User.findById(req.user._id);
+
+    if(!user){
+        throw new ApiError(404,"User not found");
+    }
+    const otp = speakeasy.totp({
+        secret:process.env.OTP_SECRET,
+        encoding:"base32"
+    });
+
+    const optExpiry = Date.now() + parseInt(process.env.OTP_EXPIRY_DURATION);
+
+    user.twoFactorToken=otp;
+    user.otpExpiry=optExpiry;
+     await user.save({validateBeforeSave:false});
+
+     return res.status(200).json(
+        new ApiResponse(200,{otp},"otp generated successfully")
+     )
+})
+
+const verifyOtp = asyncHandler(async(req,res)=>{
+    if(!req.user){
+        throw new ApiError(401,"User not authenticated");
+    }
+
+    const {otp} = req.body;
+    const user = await User.FindById(req.user._id);
+    if(!user){
+        throw new ApiError(404,"User not found");
+    }
+    if(!user.twoFactorToken || !user.otpExpiry){
+        throw new ApiError(400,"OTP not generated");
+    }
+    if(Date.now() > user.otpExpiry){
+        twoFactorToken=undefined;
+        otpExpiry=undefined;
+        await user.save({validateBeforeSave:false});
+        throw new ApiError(400,"OTP expired");
+    }
+
+    const verifiedotp = speakeasy.totp.verify({
+        secret:process.env.OTP_SECRET,
+        encoding:"base32",
+        token:otp,
+    });
+    if(!verifiedotp){
+        throw new ApiError(400,"Invalid OTP");
+    }
+    twoFactorToken=undefined;
+    otpExpiry=undefined;
+    await user.save({validateBeforeSave:false});
+
+    return res.status(200).json(
+        new ApiResponse(200, {}, "OTP verified successfully")
+      );
+
+})
+
+
+
 
     const ChangePassword= asyncHandler(async(res,req)=>{
       const{oldPassword,newPassword}= req.body
@@ -251,10 +317,13 @@ const NewrefreshToken = asyncHandler(async(req,res)=>{
       
     export{
         registerUser,
+        generateOTP,
+        verifyOtp,
         loginUser,
         logout,
         NewrefreshToken,
         ChangePassword,
         updateAccountDetails,
-        updatedProfilePhoto
+        updatedProfilePhoto,
+        
     }

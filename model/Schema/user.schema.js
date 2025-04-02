@@ -28,7 +28,13 @@ const userSchema = new mongoose.Schema({
     },
     profilePicture: {
         type: String,
-        default: "https://example.com/default-avatar.png"
+        required:true
+    },
+    twoFactorToken:{
+        type:String,//Base32 format 
+    },
+    otpExpiry:{
+        type:Date
     },
 }, {
     timestamps: {
